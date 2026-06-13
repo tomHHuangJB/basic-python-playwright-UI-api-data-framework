@@ -1,0 +1,83 @@
+name: Python Playwright Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      APP_URL: http://localhost:5173
+      API_BASE_URL: http://localhost:3001
+      DEPLOYMENT_ID: github-actions
+      CUSTOMER_ID: practice-customer
+      LOCAL_AUTOMATION_APP_REPO: ${{ secrets.LOCAL_AUTOMATION_APP_REPO || 'https://github.com/tomHHuangJB/LocalAutomationApp.git' }}
+      LOCAL_AUTOMATION_APP_REF: ${{ secrets.LOCAL_AUTOMATION_APP_REF }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check out LocalAutomationApp
+        run: |
+          git clone "$LOCAL_AUTOMATION_APP_REPO" LocalAutomationApp
+          if [ -n "$LOCAL_AUTOMATION_APP_REF" ]; then
+            cd LocalAutomationApp
+            git checkout "$LOCAL_AUTOMATION_APP_REF"
+          fi
+
+      - name: Start LocalAutomationApp
+        run: |
+          cd LocalAutomationApp
+          docker compose --profile stable up -d --build
+
+      - name: Wait for LocalAutomationApp
+        run: |
+          for i in {1..60}; do
+            if curl -fsS "$API_BASE_URL/health" >/dev/null && curl -fsS "$APP_URL" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "LocalAutomationApp did not become ready in time" >&2
+          cd LocalAutomationApp
+          docker compose --profile stable ps
+          docker compose --profile stable logs --tail=200
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run pytest
+        run: pytest
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-html-report
+          path: reports/report.html
+          if-no-files-found: ignore
+
+      - name: Shutdown LocalAutomationApp
+        if: always()
+        run: |
+          cd LocalAutomationApp
+          docker compose --profile stable down -v
