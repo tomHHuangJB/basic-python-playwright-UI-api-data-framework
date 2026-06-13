@@ -19,7 +19,7 @@ jobs:
       DEPLOYMENT_ID: github-actions
       CUSTOMER_ID: practice-customer
       LOCAL_AUTOMATION_APP_REPO: ${{ secrets.LOCAL_AUTOMATION_APP_REPO || 'https://github.com/tomHHuangJB/LocalAutomationApp.git' }}
-      LOCAL_AUTOMATION_APP_REF: ${{ secrets.LOCAL_AUTOMATION_APP_REF }}
+      LOCAL_AUTOMATION_APP_REF: ${{ secrets.LOCAL_AUTOMATION_APP_REF || 'thuang.working' }}
 
     steps:
       - name: Check out repository
@@ -36,7 +36,11 @@ jobs:
       - name: Start LocalAutomationApp
         run: |
           cd LocalAutomationApp
-          docker compose --profile stable up -d --build
+          if ! docker compose --profile stable up -d --build; then
+            docker compose --profile stable ps
+            docker compose --profile stable logs --tail=200
+            exit 1
+          fi
 
       - name: Wait for LocalAutomationApp
         run: |
