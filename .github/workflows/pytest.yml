@@ -19,7 +19,7 @@ jobs:
       DEPLOYMENT_ID: github-actions
       CUSTOMER_ID: practice-customer
       LOCAL_AUTOMATION_APP_REPO: ${{ secrets.LOCAL_AUTOMATION_APP_REPO || 'https://github.com/tomHHuangJB/LocalAutomationApp.git' }}
-      LOCAL_AUTOMATION_APP_REF: ${{ secrets.LOCAL_AUTOMATION_APP_REF || 'thuang.working' }}
+      LOCAL_AUTOMATION_APP_REF: ${{ secrets.LOCAL_AUTOMATION_APP_REF || 'main' }}
 
     steps:
       - name: Check out repository
